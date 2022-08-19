@@ -325,9 +325,9 @@ if __name__ == "__main__":
 		print(args.screenshot_frames)
 		for idx in args.screenshot_frames:
 			f = ref_transforms["frames"][int(idx)]
-            if "camera_angle_x" in f:
-                testbed.fov_axis = 0
-                testbed.fov = f["camera_angle_x"] * 180 / np.pi
+			if "camera_angle_x" in f:
+				testbed.fov_axis = 0
+				testbed.fov = f["camera_angle_x"] * 180 / np.pi
 			cam_matrix = f["transform_matrix"]
 			testbed.set_nerf_camera_matrix(np.matrix(cam_matrix)[:-1,:])
 			outname = os.path.join(args.screenshot_dir, os.path.basename(f["file_path"]))
