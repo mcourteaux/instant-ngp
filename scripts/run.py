@@ -235,8 +235,9 @@ if __name__ == "__main__":
 
 		testbed.nerf.rendering_min_transmittance = 1e-4
 
-		testbed.fov_axis = 0
-		testbed.fov = test_transforms["camera_angle_x"] * 180 / np.pi
+		if "camera_angle_x" in test_transforms:
+			testbed.fov_axis = 0
+			testbed.fov = test_transforms["camera_angle_x"] * 180 / np.pi
 		testbed.shall_train = False
 
 		with tqdm(list(enumerate(test_transforms["frames"])), unit="images", desc=f"Rendering test frame") as t:
@@ -256,6 +257,8 @@ if __name__ == "__main__":
 
 				ref_image = read_image(ref_fname)
 
+
+
 				# NeRF blends with background colors in sRGB space, rather than first
 				# transforming to linear space, blending there, and then converting back.
 				# (See e.g. the PNG spec for more information on how the `alpha` channel
@@ -273,13 +276,20 @@ if __name__ == "__main__":
 				if i == 0:
 					write_image("ref.png", ref_image)
 
+				if "camera_angle_x" in frame:
+					testbed.fov_axis = 0
+					testbed.fov = frame["camera_angle_x"] * 180 / np.pi
+
 				testbed.set_nerf_camera_matrix(np.matrix(frame["transform_matrix"])[:-1,:])
+				start_time = time.time()
 				image = testbed.render(ref_image.shape[1], ref_image.shape[0], spp, True)
+				stop_time = time.time()
+				print("frame %04d render time: %.4f" % (i,  stop_time - start_time))
 
 				if i == 0:
 					write_image("out.png", image)
 
-				diffimg = np.absolute(image - ref_image)
+				diffimg = np.absolute(image[...,:3] - ref_image[...,:3])
 				diffimg[...,3:4] = 1.0
 				if i == 0:
 					write_image("diff.png", diffimg)
@@ -300,7 +310,7 @@ if __name__ == "__main__":
 		psnr_avgmse = mse2psnr(totmse/(totcount or 1))
 		psnr = totpsnr/(totcount or 1)
 		ssim = totssim/(totcount or 1)
-		print(f"PSNR={psnr} [min={minpsnr} max={maxpsnr}] SSIM={ssim}")
+		print(f"MEAN PSNR={psnr} [min={minpsnr} max={maxpsnr}] SSIM={ssim} PSNR_MEANMSE={psnr_avgmse}")
 
 	if args.save_mesh:
 		res = args.marching_cubes_res or 256
@@ -315,6 +325,9 @@ if __name__ == "__main__":
 		print(args.screenshot_frames)
 		for idx in args.screenshot_frames:
 			f = ref_transforms["frames"][int(idx)]
+            if "camera_angle_x" in f:
+                testbed.fov_axis = 0
+                testbed.fov = f["camera_angle_x"] * 180 / np.pi
 			cam_matrix = f["transform_matrix"]
 			testbed.set_nerf_camera_matrix(np.matrix(cam_matrix)[:-1,:])
 			outname = os.path.join(args.screenshot_dir, os.path.basename(f["file_path"]))
