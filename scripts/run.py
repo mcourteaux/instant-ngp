@@ -318,8 +318,9 @@ if __name__ == "__main__":
 		testbed.compute_and_save_marching_cubes_mesh(args.save_mesh, [res, res, res])
 
 	if ref_transforms:
-		testbed.fov_axis = 0
-		testbed.fov = ref_transforms["camera_angle_x"] * 180 / np.pi
+		if "camera_angle_x" in ref_transforms:
+			testbed.fov_axis = 0
+			testbed.fov = ref_transforms["camera_angle_x"] * 180 / np.pi
 		if not args.screenshot_frames:
 			args.screenshot_frames = range(len(ref_transforms["frames"]))
 		print(args.screenshot_frames)
