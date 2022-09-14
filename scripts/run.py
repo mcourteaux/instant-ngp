@@ -43,6 +43,7 @@ def parse_args():
 	parser.add_argument("--screenshot_frames", nargs="*", help="Which frame(s) to take screenshots of.")
 	parser.add_argument("--screenshot_dir", default="", help="Which directory to output screenshots to.")
 	parser.add_argument("--screenshot_spp", type=int, default=16, help="Number of samples per pixel in screenshots.")
+	parser.add_argument("--log-file", type=str, default="log.txt", help="The log-file to which to write the information about screenshots or tested frames.")
 
 	parser.add_argument("--video_camera_path", default="", help="The camera path to render, e.g., base_cam.json.")
 	parser.add_argument("--video_camera_smoothing", action="store_true", help="Applies additional smoothing to the camera trajectory with the caveat that the endpoint of the camera path may not be reached.")
@@ -240,6 +241,8 @@ if __name__ == "__main__":
 			testbed.fov = test_transforms["camera_angle_x"] * 180 / np.pi
 		testbed.shall_train = False
 
+		frame_logs = []
+
 		with tqdm(list(enumerate(test_transforms["frames"])), unit="images", desc=f"Rendering test frame") as t:
 			for i, frame in t:
 				p = frame["file_path"]
@@ -256,7 +259,6 @@ if __name__ == "__main__":
 								ref_fname = os.path.join(data_dir, p + ".exr")
 
 				ref_image = read_image(ref_fname)
-
 
 
 				# NeRF blends with background colors in sRGB space, rather than first
@@ -284,23 +286,41 @@ if __name__ == "__main__":
 				start_time = time.time()
 				image = testbed.render(ref_image.shape[1], ref_image.shape[0], spp, True)
 				stop_time = time.time()
-				print("frame %04d render time: %.4f" % (i,  stop_time - start_time))
+				print("frame %04d render time: %.4f" % (i, stop_time - start_time))
 
-				if i == 0:
-					write_image("out.png", image)
+				outname = None
+				if args.screenshot_dir:
+					outname = os.path.join(args.screenshot_dir, os.path.basename(frame["file_path"]))
+					# Some NeRF datasets lack the .png suffix in the dataset metadata
+					if not os.path.splitext(outname)[1]:
+						outname = outname + ".png"
+					write_image(outname, image)
 
 				diffimg = np.absolute(image[...,:3] - ref_image[...,:3])
-				diffimg[...,3:4] = 1.0
 				if i == 0:
 					write_image("diff.png", diffimg)
 
 				A = np.clip(linear_to_srgb(image[...,:3]), 0.0, 1.0)
 				R = np.clip(linear_to_srgb(ref_image[...,:3]), 0.0, 1.0)
+				mpe = float(np.amax(diffimg))
 				mse = float(compute_error("MSE", A, R))
 				ssim = float(compute_error("SSIM", A, R))
 				totssim += ssim
 				totmse += mse
 				psnr = mse2psnr(mse)
+
+				frame_logs.append({
+					"spp": spp,
+					"width": ref_image.shape[1],
+					"height": ref_image.shape[0],
+					"mse": mse,
+					"psnr": psnr,
+					"ssim": ssim,
+					"time": stop_time - start_time,
+					"mpe": mpe,
+					"outname": outname,
+					})
+
 				totpsnr += psnr
 				minpsnr = psnr if psnr<minpsnr else minpsnr
 				maxpsnr = psnr if psnr>maxpsnr else maxpsnr
@@ -311,6 +331,10 @@ if __name__ == "__main__":
 		psnr = totpsnr/(totcount or 1)
 		ssim = totssim/(totcount or 1)
 		print(f"MEAN PSNR={psnr} [min={minpsnr} max={maxpsnr}] SSIM={ssim} PSNR_MEANMSE={psnr_avgmse}")
+
+		if args.log_file is not None:
+			with open(args.log_file, "w") as lf:
+				json.dump(frame_logs, lf, indent=2)
 
 	if args.save_mesh:
 		res = args.marching_cubes_res or 256
@@ -324,6 +348,7 @@ if __name__ == "__main__":
 		if not args.screenshot_frames:
 			args.screenshot_frames = range(len(ref_transforms["frames"]))
 		print(args.screenshot_frames)
+		frame_logs = []
 		for idx in args.screenshot_frames:
 			f = ref_transforms["frames"][int(idx)]
 			if "camera_angle_x" in f:
@@ -336,11 +361,27 @@ if __name__ == "__main__":
 			# Some NeRF datasets lack the .png suffix in the dataset metadata
 			if not os.path.splitext(outname)[1]:
 				outname = outname + ".png"
-
 			print(f"rendering {outname}")
+			start_time = time.time()
 			image = testbed.render(args.width or int(ref_transforms["w"]), args.height or int(ref_transforms["h"]), args.screenshot_spp, True)
+			stop_time = time.time()
+
+			frame_logs.append({
+				"spp": spp,
+				"width": image.shape[1],
+				"height": image.shape[0],
+				"time": stop_time - start_time,
+				"outname": outname,
+				})
+
+			print("frame %04d render time: %.4f" % (i, stop_time - start_time))
 			os.makedirs(os.path.dirname(outname), exist_ok=True)
 			write_image(outname, image)
+
+		if args.log_file is not None:
+			with open(args.log_file, "w") as lf:
+				json.dump(frame_logs, lf, indent=2)
+
 	elif args.screenshot_dir:
 		outname = os.path.join(args.screenshot_dir, args.scene + "_" + network_stem)
 		print(f"Rendering {outname}.png")

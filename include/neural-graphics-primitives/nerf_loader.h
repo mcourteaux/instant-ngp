@@ -22,6 +22,8 @@
 
 #include <vector>
 
+#define DONT_DO_BANANAS 1
+
 NGP_NAMESPACE_BEGIN
 
 // how much to scale the scene by vs the original nerf dataset; we want to fit the thing in the unit cube
@@ -101,6 +103,9 @@ struct NerfDataset {
 	void set_training_image(int frame_idx, const Eigen::Vector2i& image_resolution, const void* pixels, const void* depth_pixels, float depth_scale, bool image_data_on_gpu, EImageDataType image_type, EDepthDataType depth_type, float sharpen_amount = 0.f, bool white_transparent = false, bool black_transparent = false, uint32_t mask_color = 0, const Ray *rays = nullptr);
 
 	Eigen::Vector3f nerf_direction_to_ngp(const Eigen::Vector3f& nerf_dir) {
+#if DONT_DO_BANANAS
+    return nerf_dir;
+#else
 		Eigen::Vector3f result = nerf_dir;
 		if (from_mitsuba) {
 			result *= -1;
@@ -108,9 +113,19 @@ struct NerfDataset {
 			result=Eigen::Vector3f(result.y(), result.z(), result.x());
 		}
 		return result;
+#endif
 	}
 
+<<<<<<< HEAD
 	Eigen::Matrix<float, 3, 4> nerf_matrix_to_ngp(const Eigen::Matrix<float, 3, 4>& nerf_matrix, bool scale_columns = false) const {
+=======
+	Eigen::Matrix<float, 3, 4> nerf_matrix_to_ngp(const Eigen::Matrix<float, 3, 4>& nerf_matrix) {
+#if DONT_DO_BANANAS
+    Eigen::Matrix<float, 3, 4> result = nerf_matrix;
+    result.col(3) = result.col(3) * scale + offset;
+    return result;
+#else
+>>>>>>> No more bananas transformations and life is simple.
 		Eigen::Matrix<float, 3, 4> result = nerf_matrix;
 		result.col(0) *= scale_columns ? scale : 1.f;
 		result.col(1) *= scale_columns ? -scale : -1.f;
@@ -129,9 +144,15 @@ struct NerfDataset {
 		}
 
 		return result;
+#endif
 	}
 
 	Eigen::Matrix<float, 3, 4> ngp_matrix_to_nerf(const Eigen::Matrix<float, 3, 4>& ngp_matrix, bool scale_columns = false) const {
+#if DONT_DO_BANANAS
+    Eigen::Matrix<float, 3, 4> result = ngp_matrix;
+    result.col(3) = (result.col(3) - offset) / scale;
+    return result;
+#else
 		Eigen::Matrix<float, 3, 4> result = ngp_matrix;
 		if (from_mitsuba) {
 			result.col(0) *= -1;
@@ -148,6 +169,7 @@ struct NerfDataset {
 		result.col(2) *= scale_columns ? -1.f/scale : -1.f;
 		result.col(3) = (result.col(3) - offset) / scale;
 		return result;
+#endif
 	}
 
 	Eigen::Vector3f ngp_position_to_nerf(Eigen::Vector3f pos) const {
@@ -166,7 +188,7 @@ struct NerfDataset {
 		ray.o = ray.o * scale + offset;
 		if (scale_direction)
 			ray.d *= scale;
-
+#if !DONT_DO_BANANAS
 		float tmp = ray.o[0];
 		ray.o[0] = ray.o[1];
 		ray.o[1] = ray.o[2];
@@ -176,6 +198,7 @@ struct NerfDataset {
 		ray.d[0] = ray.d[1];
 		ray.d[1] = ray.d[2];
 		ray.d[2] = tmp;
+#endif
 	}
 };
 
