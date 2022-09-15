@@ -367,14 +367,14 @@ if __name__ == "__main__":
 			stop_time = time.time()
 
 			frame_logs.append({
-				"spp": spp,
+				"spp": args.screenshot_spp,
 				"width": image.shape[1],
 				"height": image.shape[0],
 				"time": stop_time - start_time,
 				"outname": outname,
 				})
 
-			print("frame %04d render time: %.4f" % (i, stop_time - start_time))
+			print("frame %04d render time: %.4f" % (idx, stop_time - start_time))
 			os.makedirs(os.path.dirname(outname), exist_ok=True)
 			write_image(outname, image)
 
