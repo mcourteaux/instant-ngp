@@ -116,16 +116,12 @@ struct NerfDataset {
 #endif
 	}
 
-<<<<<<< HEAD
 	Eigen::Matrix<float, 3, 4> nerf_matrix_to_ngp(const Eigen::Matrix<float, 3, 4>& nerf_matrix, bool scale_columns = false) const {
-=======
-	Eigen::Matrix<float, 3, 4> nerf_matrix_to_ngp(const Eigen::Matrix<float, 3, 4>& nerf_matrix) {
 #if DONT_DO_BANANAS
     Eigen::Matrix<float, 3, 4> result = nerf_matrix;
     result.col(3) = result.col(3) * scale + offset;
     return result;
 #else
->>>>>>> No more bananas transformations and life is simple.
 		Eigen::Matrix<float, 3, 4> result = nerf_matrix;
 		result.col(0) *= scale_columns ? scale : 1.f;
 		result.col(1) *= scale_columns ? -scale : -1.f;
