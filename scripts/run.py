@@ -232,7 +232,7 @@ if __name__ == "__main__":
 		# Prior nerf papers don't typically do multi-sample anti aliasing.
 		# So snap all pixels to the pixel centers.
 		testbed.snap_to_pixel_centers = True
-		spp = 8
+		spp = args.screenshot_spp
 
 		testbed.nerf.rendering_min_transmittance = 1e-4
 
@@ -286,7 +286,7 @@ if __name__ == "__main__":
 				start_time = time.time()
 				image = testbed.render(ref_image.shape[1], ref_image.shape[0], spp, True)
 				stop_time = time.time()
-				print("frame %04d render time: %.4f" % (i, stop_time - start_time))
+				print("frame %04d render time: %.4f  (%.4f / sample)" % (i, stop_time - start_time, (stop_time - start_time)/spp))
 
 				outname = None
 				if args.screenshot_dir:
